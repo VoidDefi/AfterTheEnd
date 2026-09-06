@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<!-- Import tModLoader mod properties -->
+	<Import Project="..\tModLoader.targets" />
+
+	<!-- General -->
+	<PropertyGroup>
+		
+	</PropertyGroup>
+	<ItemGroup>
+	  <None Remove="Reworks\Bosses\CalamitasClone\CalamitasClone.png" />
+	  <None Remove="Reworks\Bosses\CalamitasClone\CalamitasCloneMask.png" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Reference Remove="Libraries\CalamityMod.dll" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Reference Include="CalamityMod">
+	    <HintPath>Libraries\CalamityMod.dll</HintPath>
+	  </Reference>
+	</ItemGroup>
+
+	<!-- References -->
+
+</Project>

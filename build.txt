@@ -1,0 +1,4 @@
+displayName = Calamity After The End
+author = Defi
+version = 0.1
+modReferences = CalamityMod
