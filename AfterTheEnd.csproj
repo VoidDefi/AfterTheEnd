@@ -12,6 +12,8 @@
 	  <None Remove="Reworks\Bosses\CalamitasClone\CalamitasCloneMask.png" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\Cataclysm.png" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\CataclysmGlow.png" />
+	  <None Remove="Reworks\Bosses\CalamitasClone\Catastrophe.png" />
+	  <None Remove="Reworks\Bosses\CalamitasClone\CatastropheGlow.png" />
 	</ItemGroup>
 	<ItemGroup>
 	  <Reference Remove="Libraries\CalamityMod.dll" />
