@@ -12,6 +12,9 @@ using CalClone = CalamityMod.NPCs.CalClone.CalamitasClone;
 using Microsoft.Xna.Framework;
 using CalamityMod.Events;
 using CalamityMod.World;
+using Terraria.ModLoader.IO;
+using System.IO;
+using AfterTheEnd.Utilities;
 
 namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 {
@@ -20,6 +23,8 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
         private static Type ModType = typeof(CalClone);
 
         private static readonly AutoPropertyInfo TextureInfo = new(ModType, "Texture", BindingFlags.Public | BindingFlags.Instance);
+
+        private static readonly AutoAsset<Texture2D> MetalGlowMask = new("AfterTheEnd/Reworks/Bosses/CalamitasClone/CalamitasCloneMask");
 
         public override void Load()
         {
@@ -55,9 +60,33 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 
         public override bool InstancePerEntity => true;
 
+        public float Temperature { get; set; } = 0;
+
+        public int FinalAttackCounter { get; set; } = 0;
+
+        public float HeatTemperature => 0.05f + CoolTemperature;
+
+        public float CoolTemperature => 0.02f;
+
         public override void SetStaticDefaults()
         {
             Main.npcFrameCount[Type] = 5;
+        }
+
+        public override void SendExtraAI(NPC npc, BitWriter bitWriter, BinaryWriter binaryWriter)
+        {
+            if (npc.type == Type)
+            {
+                binaryWriter.Write(Temperature);
+            }
+        }
+
+        public override void ReceiveExtraAI(NPC npc, BitReader bitReader, BinaryReader binaryReader)
+        {
+            if (npc.type == Type)
+            {
+                Temperature = binaryReader.ReadSingle();
+            }
         }
 
         public override void FindFrame(NPC npc, int frameHeight)
@@ -71,11 +100,26 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
             } 
         }
 
+        /// <summary>
+        /// Code from Calamity mod 
+        /// </summary>
+        /// <param name="npc"></param>
+        /// <param name="spriteBatch"></param>
+        /// <param name="screenPos"></param>
+        /// <param name="drawColor"></param>
+        /// <returns></returns>
         public override bool PreDraw(NPC npc, SpriteBatch spriteBatch, Vector2 screenPos, Color drawColor)
         {
             NPC NPC = npc;
 
             if (NPC.type != Type) return true;
+
+            const float maxTemperature = 10;
+
+            float temperatureAmount = Math.Clamp(Temperature, 0, maxTemperature);
+            temperatureAmount /= maxTemperature;
+
+            Vector2 shaking = Main.rand.NextVector2Circular(1f, 1f) * temperatureAmount * 3f;
 
             bool onDash = NPC.ai[1] == 3;
 
@@ -104,14 +148,14 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                     Vector2 offset = NPC.oldPos[i] + new Vector2((float)NPC.width, (float)NPC.height) / 2f - screenPos;
                     offset -= new Vector2((float)texture.Width, (float)(texture.Height / Main.npcFrameCount[Type])) * NPC.scale / 2f;
                     offset += origin * NPC.scale + new Vector2(0f, NPC.gfxOffY);
-                    spriteBatch.Draw(texture, offset, NPC.frame, afterimageColor, NPC.rotation, origin, NPC.scale, spriteEffects, 0f);
+                    spriteBatch.Draw(texture, offset + shaking, NPC.frame, afterimageColor, NPC.rotation, origin, NPC.scale, spriteEffects, 0f);
                 }
             }
 
             Vector2 npcOffset = NPC.Center - screenPos;
             npcOffset -= new Vector2((float)texture.Width, (float)(texture.Height / Main.npcFrameCount[Type])) * NPC.scale / 2f;
             npcOffset += origin * NPC.scale + new Vector2(0f, NPC.gfxOffY);
-            spriteBatch.Draw(texture, npcOffset, NPC.frame, NPC.GetAlpha(drawColor), NPC.rotation, origin, NPC.scale, spriteEffects, 0f);
+            spriteBatch.Draw(texture, npcOffset + shaking, NPC.frame, NPC.GetAlpha(drawColor), NPC.rotation, origin, NPC.scale, spriteEffects, 0f);
 
             texture = CalClone.GlowTexture.Value;
             Color color = Color.Lerp(Color.White, Color.Red, 0.5f * 0);
@@ -130,7 +174,7 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                     Vector2 offset = NPC.oldPos[i] + new Vector2((float)NPC.width, (float)NPC.height) / 2f - screenPos;
                     offset -= new Vector2((float)texture.Width, (float)(texture.Height / Main.npcFrameCount[Type])) * NPC.scale / 2f;
                     offset += origin * NPC.scale + new Vector2(0f, NPC.gfxOffY);
-                    spriteBatch.Draw(texture, offset, NPC.frame, extraAfterimageColor, NPC.rotation, origin, NPC.scale, spriteEffects, 0f);
+                    spriteBatch.Draw(texture, offset + shaking, NPC.frame, extraAfterimageColor, NPC.rotation, origin, NPC.scale, spriteEffects, 0f);
                 }
             }
 
@@ -160,7 +204,18 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                 }
             }
 
-            spriteBatch.Draw(texture, npcOffset, NPC.frame, color, NPC.rotation, origin, NPC.scale, spriteEffects, 0f);
+            spriteBatch.Draw(texture, npcOffset + shaking, NPC.frame, color, NPC.rotation, origin, NPC.scale, spriteEffects, 0f);
+
+            //Draw MetalGlow
+
+            Color glowColor = Color.Lerp(new Color(136, 20, 20), new Color(226, 50, 20), temperatureAmount);
+
+            glowColor.A = (byte)MathHelper.Lerp(0, 100, temperatureAmount);
+
+            spriteBatch.Draw(MetalGlowMask.Value, npcOffset + shaking, null, glowColor * temperatureAmount * 0.5f, NPC.rotation, origin + Vector2.One * 11, NPC.scale, spriteEffects, 0f);
+
+            //End
+
             return false;
         }
 
@@ -187,6 +242,12 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 
             if (NPC.type != type) return true;
 
+            if (NPC.life > 100)
+                NPC.life = 100;
+
+            Temperature -= CoolTemperature;
+            if (Temperature < 0) Temperature = 0;
+
             if (NPC.ai[1] == 6)
             {
                 Player player = Main.player[NPC.target];
@@ -194,12 +255,34 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                 npc.velocity *= 0.9f;
                 Rotation(NPC, player);
 
+                const int FinalAttackDelay = 60;
+
+                if (FinalAttackCounter == FinalAttackDelay)
+                {
+                    int vortex = Projectile.NewProjectile(NPC.GetSource_FromAI(), NPC.Center, Vector2.Zero, ModContent.ProjectileType<CalamitasCloneVortex>(), 100, 0, ai0: NPC.whoAmI);
+                    Main.projectile[vortex].scale = 0;
+                }
+
+                if (FinalAttackCounter >= FinalAttackDelay)
+                {
+                    Temperature += HeatTemperature;
+
+                    if (Temperature > 30) NPC.life = 0;
+                }
+
+                FinalAttackCounter++;
+
                 return false;
             }
 
             return true;
         }
 
+        /// <summary>
+        /// Code from Calamity mod 
+        /// </summary>
+        /// <param name="NPC"></param>
+        /// <param name="player"></param>
         private void Rotation(NPC NPC, Player player)
         {
             Vector2 npcCenter = new Vector2(NPC.Center.X, NPC.position.Y + NPC.height - 59f);
@@ -212,7 +295,7 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
             else if (rotation > MathHelper.TwoPi)
                 rotation -= MathHelper.TwoPi;
 
-            float rotationAmt = 0.1f;
+            float rotationAmt = 0.03f;
             if (NPC.rotation < rotation)
             {
                 if ((rotation - NPC.rotation) > MathHelper.Pi)

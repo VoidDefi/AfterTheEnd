@@ -14,6 +14,8 @@
 	  <None Remove="Reworks\Bosses\CalamitasClone\CataclysmGlow.png" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\Catastrophe.png" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\CatastropheGlow.png" />
+	  <None Remove="Reworks\Bosses\CalamitasClone\DarkVortex.png" />
+	  <None Remove="Reworks\Bosses\CalamitasClone\MeltedMetalLeyer.png" />
 	</ItemGroup>
 	<ItemGroup>
 	  <Reference Remove="Libraries\CalamityMod.dll" />
