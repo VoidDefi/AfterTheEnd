@@ -8,6 +8,7 @@
 		
 	</PropertyGroup>
 	<ItemGroup>
+	  <None Remove="Localization\ru-RU_Mods.AfterTheEnd.hjson" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\CalamitasClone.png" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\CalamitasCloneMask.png" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\Cataclysm.png" />
@@ -15,7 +16,8 @@
 	  <None Remove="Reworks\Bosses\CalamitasClone\Catastrophe.png" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\CatastropheGlow.png" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\DarkVortex.png" />
-	  <None Remove="Reworks\Bosses\CalamitasClone\MeltedMetalLeyer.png" />
+	  <None Remove="Reworks\Bosses\CalamitasClone\Light.png" />
+	  <None Remove="Reworks\Bosses\CalamitasClone\MeltedMetalLayer.png" />
 	</ItemGroup>
 	<ItemGroup>
 	  <Reference Remove="Libraries\CalamityMod.dll" />

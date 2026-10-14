@@ -13,6 +13,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
 using Terraria.GameContent;
 using CalamityMod;
+using CalamityMod.Projectiles.Melee;
+using CalamityMod.Particles;
 
 namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 {
@@ -22,9 +24,12 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 
         private static readonly AutoPropertyInfo TextureInfo = new(ModType, "Texture", BindingFlags.Public | BindingFlags.Instance);
 
+        private static readonly AutoMethodInfo HitEffectInfo = new(ModType, "HitEffect", BindingFlags.Public | BindingFlags.Instance);
+
         public override void Load()
         {
             MonoModHooks.Add(TextureInfo.Value.GetMethod, OnTexture);
+            MonoModHooks.Add(HitEffectInfo.Value, OnHitEffect);
         }
 
         private delegate string OriginalGetTexture(Catastrophe self);
@@ -35,6 +40,25 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                 return (GetType().Namespace + "." + "Catastrophe").Replace('.', '/');
 
             return origin.Invoke(self);
+        }
+
+        private delegate void OriginalHitEffect(Catastrophe self, NPC.HitInfo info);
+
+        private void OnHitEffect(OriginalHitEffect origin, Catastrophe self, NPC.HitInfo info)
+        {
+            NPC npc = self.NPC;
+
+            if (npc.life > 1)
+                origin.Invoke(self, info);
+
+            else
+            {
+                int frameHaight = TextureAssets.Npc[Type].Height() / Main.npcFrameCount[Type];
+                npc.frame.Y = 6 * frameHaight;
+
+                DeathAshParticle.CreateAshesFromNPC(npc, Vector2.Zero);
+            }
+
         }
 
         private int type = 0;

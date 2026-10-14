@@ -16,7 +16,7 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
     /// <summary>
     /// Code from Calamity Mod
     /// </summary>
-    internal class MeltedMetal : Metaball
+    internal class MeltedMetalMetaball : Metaball
     {
         public class Particle
         {
@@ -46,10 +46,18 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
             {
                 Center += Velocity;
                 Velocity *= 0.96f;
+
+                if (Velocity.Y < 10f)
+                Velocity.Y += 0.2f;
+
                 if (firstFrame)
                     firstFrame = false;
                 else
                     Size *= SizeScaling;
+
+                const float CollisionSize = 1;
+
+                Velocity = Collision.TileCollision(Center - Vector2.Zero * CollisionSize, Velocity, (int)CollisionSize, (int)CollisionSize);
             }
         }
         public override bool IgnoreFPS => true;
@@ -80,7 +88,7 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                 return;
 
             // Load the layer asset wrapper.
-            LayerAsset = ModContent.Request<Texture2D>($"CalamityMod/Graphics/Metaballs/CalamitasLayer", AssetRequestMode.ImmediateLoad);
+            LayerAsset = ModContent.Request<Texture2D>($"AfterTheEnd/Reworks/Bosses/CalamitasClone/MeltedMetalLayer", AssetRequestMode.ImmediateLoad);
         }
         public override GeneralDrawLayer DrawLayer => GeneralDrawLayer.BeforeProjectiles;
 
@@ -106,7 +114,9 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
         // Make the texture scroll.
         public override Vector2 CalculateManualOffsetForLayer(int layerIndex)
         {
-            return Vector2.UnitX * Main.GlobalTimeWrappedHourly * 0.037f;
+            float time = Main.GlobalTimeWrappedHourly;
+
+            return new Vector2(MathF.Sin(time) / 100f, -10) * time * 0.001f;
         }
 
         public override void DrawInstances()

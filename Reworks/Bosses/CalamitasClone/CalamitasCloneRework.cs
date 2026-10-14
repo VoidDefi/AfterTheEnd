@@ -8,13 +8,16 @@ using Terraria;
 using Terraria.GameContent;
 using Terraria.ID;
 using Terraria.ModLoader;
-using CalClone = CalamityMod.NPCs.CalClone.CalamitasClone;
 using Microsoft.Xna.Framework;
 using CalamityMod.Events;
 using CalamityMod.World;
 using Terraria.ModLoader.IO;
 using System.IO;
 using AfterTheEnd.Utilities;
+using MonoMod.Cil;
+using Mono.Cecil.Cil;
+using CalamityMod.NPCs;
+using CalClone = CalamityMod.NPCs.CalClone.CalamitasClone;
 
 namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 {
@@ -22,13 +25,88 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
     {
         private static Type ModType = typeof(CalClone);
 
+        public static int BrothersSpawnDelay => 140;
+
         private static readonly AutoPropertyInfo TextureInfo = new(ModType, "Texture", BindingFlags.Public | BindingFlags.Instance);
 
         private static readonly AutoAsset<Texture2D> MetalGlowMask = new("AfterTheEnd/Reworks/Bosses/CalamitasClone/CalamitasCloneMask");
 
+        private static readonly AutoMethodInfo HitEffectInfo = new(ModType, "HitEffect", BindingFlags.Public | BindingFlags.Instance);
+
+        private static readonly AutoMethodInfo AIInfo = new(ModType, "AI", BindingFlags.Public | BindingFlags.Instance);
+
+        private static readonly AutoFieldInfo NewAIInfo = new(typeof(CalamityGlobalNPC), "newAI", BindingFlags.Public | BindingFlags.Instance);
+
+
         public override void Load()
         {
             MonoModHooks.Add(TextureInfo.Value.GetMethod, OnTexture);
+            MonoModHooks.Add(HitEffectInfo.Value, OnHitEffect);
+            MonoModHooks.Modify(AIInfo.Value, ILAI);
+        }
+
+        private void ILAI(ILContext context)
+        {
+            ILCursor cursor = new ILCursor(context);
+
+            try
+            {
+                while (true)
+                {
+                    cursor.GotoNext(i => i.MatchLdfld(NewAIInfo.Value));
+
+                    if (cursor.Index < cursor.Instrs.Count - 4)
+                    {
+                        bool existLdcI40 =   cursor.Instrs[cursor.Index + 1].Match(OpCodes.Ldc_I4_0);
+                        bool existLdelemR4 = cursor.Instrs[cursor.Index + 2].Match(OpCodes.Ldelem_R4);
+                        bool existLdcR4 =    cursor.Instrs[cursor.Index + 3].MatchLdcR4(0.4f);
+                        bool existBgtUn =    cursor.Instrs[cursor.Index + 4].Match(OpCodes.Bgt_Un);
+
+                        //cursor.Index = 0;
+                        if (existLdcI40 && existLdelemR4 && existLdcR4 && existBgtUn)
+                        {
+                            cursor.Index += 4;
+                            int bufferIndex = cursor.Index;
+
+                            cursor.GotoNext(i => i.Match(OpCodes.Br_S));
+                            object label = cursor.Instrs[cursor.Index].Operand;
+
+                            cursor.Index = bufferIndex;
+                            cursor.Index++;
+
+                            cursor.Emit(OpCodes.Ldarg_0); //load this argument
+                            cursor.EmitDelegate((CalClone self) =>
+                            {
+                                NPC NPC = self.NPC;
+
+                                if (Main.netMode != 1)
+                                {
+                                    BrotherSpawner.Spawn(NPC, new Vector2(NPC.Center.X + 200, NPC.position.Y + NPC.height), BrotherSpawner.Brother.Cataclysm);
+                                    BrotherSpawner.Spawn(NPC, new Vector2(NPC.Center.X - 200, NPC.position.Y + NPC.height), BrotherSpawner.Brother.Catastrophe);
+                                }
+
+                                Color messageColor = Color.Orange;
+                                CalamityUtils.BroadcastLocalizedText("Mods.AfterTheEnd.CalCloneDialogue.PreBrothersUprising", messageColor);
+
+                                NPC.ai[1] = 7;
+                                NPC.velocity = Vector2.Zero;
+                                NPC.dontTakeDamage = true;
+                            });
+
+                            cursor.EmitBr((ILLabel)label);
+
+                            break;
+                        }
+                    }
+
+                    else break;
+                }
+            }
+
+            catch 
+            {
+                context.DumpIL();
+            }
         }
 
         private delegate string OriginalGetTexture(CalClone self);
@@ -39,6 +117,16 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                 return (GetType().Namespace + "." + "CalamitasClone").Replace('.', '/');
 
             return origin.Invoke(self);
+        }
+
+        private delegate void OriginalHitEffect(CalClone self, NPC.HitInfo info);
+
+        private void OnHitEffect(OriginalHitEffect origin, CalClone self, NPC.HitInfo info)
+        {
+            NPC npc = self.NPC;
+
+            if (npc.life > 1) 
+                origin.Invoke(self, info);
         }
 
         private int type = 0;
@@ -60,9 +148,15 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 
         public override bool InstancePerEntity => true;
 
+        public int SpawnBrothersCounter { get; set; } = 0;
+
         public float Temperature { get; set; } = 0;
 
         public int FinalAttackCounter { get; set; } = 0;
+
+        public int DialogCounter { get; set; } = 0;
+
+        public bool LightSpawned { get; set; } = false;
 
         public float HeatTemperature => 0.05f + CoolTemperature;
 
@@ -71,6 +165,12 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
         public override void SetStaticDefaults()
         {
             Main.npcFrameCount[Type] = 5;
+        }
+
+        public override void SetDefaults(NPC entity)
+        {
+            if (entity.type == Type)
+                entity.DeathSound = null;
         }
 
         public override void SendExtraAI(NPC npc, BitWriter bitWriter, BinaryWriter binaryWriter)
@@ -91,13 +191,13 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 
         public override void FindFrame(NPC npc, int frameHeight)
         {
-            if (npc.type == Type) 
+            if (npc.type == Type)
             {
                 npc.frameCounter += 0.15000000596046448 / 1.5;
                 npc.frameCounter %= Main.npcFrameCount[Type] - 1;
                 int frame = (int)npc.frameCounter;
                 npc.frame.Y = frame * frameHeight;
-            } 
+            }
         }
 
         /// <summary>
@@ -137,13 +237,15 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
             float lifeRatio = NPC.life / (float)NPC.lifeMax;
             bool phase4 = lifeRatio <= 0.1f && death;
 
+            bool doNotHide = NPC.ai[1] == 7 || Temperature > 1;
+
             if (CalamityClientConfig.Instance.Afterimages && onDash)
             {
                 for (int i = 1; i < afterimageAmt; i += 2)
                 {
                     Color afterimageColor = drawColor;
                     afterimageColor = Color.Lerp(afterimageColor, white, colorLerpAmt);
-                    afterimageColor = NPC.GetAlpha(afterimageColor);
+                    afterimageColor = doNotHide ? afterimageColor : NPC.GetAlpha(afterimageColor);
                     afterimageColor *= (float)(afterimageAmt - i) / 15f;
                     Vector2 offset = NPC.oldPos[i] + new Vector2((float)NPC.width, (float)NPC.height) / 2f - screenPos;
                     offset -= new Vector2((float)texture.Width, (float)(texture.Height / Main.npcFrameCount[Type])) * NPC.scale / 2f;
@@ -155,7 +257,7 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
             Vector2 npcOffset = NPC.Center - screenPos;
             npcOffset -= new Vector2((float)texture.Width, (float)(texture.Height / Main.npcFrameCount[Type])) * NPC.scale / 2f;
             npcOffset += origin * NPC.scale + new Vector2(0f, NPC.gfxOffY);
-            spriteBatch.Draw(texture, npcOffset + shaking, NPC.frame, NPC.GetAlpha(drawColor), NPC.rotation, origin, NPC.scale, spriteEffects, 0f);
+            spriteBatch.Draw(texture, npcOffset + shaking, NPC.frame, doNotHide ? drawColor : NPC.GetAlpha(drawColor), NPC.rotation, origin, NPC.scale, spriteEffects, 0f);
 
             texture = CalClone.GlowTexture.Value;
             Color color = Color.Lerp(Color.White, Color.Red, 0.5f * 0);
@@ -223,6 +325,8 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
         {
             if (npc.type != type) return true;
 
+            if (npc.ai[1] == 6) return true;
+
             //if (BossRushEvent.BossRushActive)
             //    return true;
 
@@ -242,9 +346,6 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 
             if (NPC.type != type) return true;
 
-            if (NPC.life > 100)
-                NPC.life = 100;
-
             Temperature -= CoolTemperature;
             if (Temperature < 0) Temperature = 0;
 
@@ -255,7 +356,24 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                 npc.velocity *= 0.9f;
                 Rotation(NPC, player);
 
-                const int FinalAttackDelay = 60;
+                CalClone clone = npc.ModNPC as CalClone;
+                if (clone.ArenaBox != null)
+                {
+                    clone.ArenaBox.NewPosition = Vector2.Lerp(clone.ArenaBox.position, npc.Center + Vector2.UnitY / 2 * clone.ArenaBox.Size.Y, 0.025f);
+                }
+
+                const int DialogDelay = 100;
+                const int FinalAttackDelay = DialogDelay * 3 + 30;
+                const string Dialog = "Mods.AfterTheEnd.CalCloneDialogue";
+
+                if (FinalAttackCounter == DialogDelay * 1)
+                    CalamityUtils.BroadcastLocalizedText($"{Dialog}.PreCastVortex0", Color.Orange);
+
+                if (FinalAttackCounter == DialogDelay * 2)
+                    CalamityUtils.BroadcastLocalizedText($"{Dialog}.PreCastVortex1", Color.Orange);
+
+                if (FinalAttackCounter == DialogDelay * 3)
+                    CalamityUtils.BroadcastLocalizedText($"{Dialog}.PreCastVortex2", Color.Orange);
 
                 if (FinalAttackCounter == FinalAttackDelay)
                 {
@@ -265,12 +383,102 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 
                 if (FinalAttackCounter >= FinalAttackDelay)
                 {
+                    /*float speed = 0.5f * 2f;
+
+                    clone.ArenaBox.NewDimensions.Z -= speed;
+                    clone.ArenaBox.NewDimensions.W -= speed;
+
+                    clone.ArenaBox.NewDimensions.X += speed;
+                    clone.ArenaBox.NewDimensions.Y -= speed;*/
+
                     Temperature += HeatTemperature;
 
-                    if (Temperature > 30) NPC.life = 0;
+                    const float SpawnMeltMetal = 18;
+                    const float SpawnLight = 38;
+
+                    if (Temperature >= 12 && DialogCounter == 0)
+                    {
+                        CalamityUtils.BroadcastLocalizedText($"{Dialog}.LossControlOverVortex0", Color.Orange);
+                        DialogCounter++;
+                    }
+
+                    if (Temperature >= 16 && DialogCounter == 1)
+                    {
+                        CalamityUtils.BroadcastLocalizedText($"{Dialog}.LossControlOverVortex1", Color.Orange);
+                        DialogCounter++;
+                    }
+                    if (Temperature >= 20 && DialogCounter == 2)
+                    {
+                        CalamityUtils.BroadcastLocalizedText($"{Dialog}.LossControlOverVortex2", Color.Orange);
+                        DialogCounter++;
+                    }
+
+                    TryWriteTerminal();
+
+                    if (Temperature > SpawnMeltMetal)
+                    {
+                        if (Main.rand.Next(0, 100) <= Temperature - SpawnMeltMetal)
+                        {
+                            Vector2 position = NPC.Center;
+
+                            position += Vector2.UnitY.RotatedBy(NPC.rotation) * 35;
+                            position += Main.rand.NextVector2Circular(1, 1) * 60;
+
+                            var particle = MeltedMetalMetaball.SpawnParticle(position, Vector2.Zero, Main.rand.NextFloat(5, 10));
+                            particle.SizeScaling = 0.992f;
+                        }
+                    }
+
+                    if (Temperature >= SpawnLight && !LightSpawned)
+                    {
+                        Projectile.NewProjectile(NPC.GetSource_FromAI(), NPC.Center, Vector2.Zero, ModContent.ProjectileType<CalamitasLighting>(), 0, 0, ai0: NPC.whoAmI);
+                        LightSpawned = true;
+                    }
+
+                    if (Temperature > SpawnLight + 2)
+                    {
+                        //NPC.life = 0;
+                        //NPC.kil
+                        // NPC.SimpleStrikeNPC(1, 0);
+                        NPC.HitSound = null;
+                        NPC.StrikeInstantKill();
+
+                        int maxParticles = Main.rand.Next(10, 20);
+
+                        for (int i = 0; i < maxParticles; i++)
+                        {
+                            Vector2 position = NPC.Center;
+
+                            position += Vector2.UnitY.RotatedBy(NPC.rotation) * 35;
+                            position += Main.rand.NextVector2Circular(1, 1) * 20;
+
+                            var particle = MeltedMetalMetaball.SpawnParticle(position, Vector2.Zero, Main.rand.NextFloat(80, 120));
+                            particle.SizeScaling = 0.992f;
+                        }
+                    }
                 }
 
                 FinalAttackCounter++;
+
+                return false;
+            }
+
+            if (NPC.ai[1] == 7)
+            {
+                Temperature += HeatTemperature;
+
+                Player player = Main.player[NPC.target];
+                Rotation(NPC, player);
+
+                if (SpawnBrothersCounter > BrothersSpawnDelay)
+                {
+                    CalamityUtils.BroadcastLocalizedText("Mods.AfterTheEnd.CalCloneDialogue.PostBrothersUprising", Color.Orange);
+                    NPC.ai[1] = 0;
+
+                    return true;
+                }
+
+                SpawnBrothersCounter++;
 
                 return false;
             }
@@ -319,6 +527,65 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                 NPC.rotation -= MathHelper.TwoPi;
             if (NPC.rotation > rotation - rotationAmt && NPC.rotation < rotation + rotationAmt)
                 NPC.rotation = rotation;
+        }
+
+        private void TryWriteTerminal()
+        {
+            const string Terminal = "Mods.AfterTheEnd.CalCloneLifeSupportSystem";
+
+            if (Temperature >= 24 && DialogCounter == 3)
+            {
+                CalamityUtils.BroadcastLocalizedText($"{Terminal}.TerminalLog0", Color.Red);
+                DialogCounter++;
+            }
+
+            if (Temperature >= 28 && DialogCounter == 4)
+            {
+                CalamityUtils.BroadcastLocalizedText($"{Terminal}.TerminalLog1", Color.Red);
+                DialogCounter++;
+            }
+
+            if (Temperature >= 29 && DialogCounter == 5)
+            {
+                CalamityUtils.BroadcastLocalizedText($"{Terminal}.TerminalLog2", Color.Red);
+                DialogCounter++;
+            }
+
+            if (Temperature >= 30 && DialogCounter == 6)
+            {
+                CalamityUtils.BroadcastLocalizedText($"{Terminal}.TerminalLog3", Color.Red);
+                DialogCounter++;
+            }
+
+            if (Temperature >= 34 && DialogCounter == 7)
+            {
+                CalamityUtils.BroadcastLocalizedText($"{Terminal}.TerminalLog4", Color.Red);
+                DialogCounter++;
+            }
+
+            if (Temperature >= 36 && DialogCounter == 8)
+            {
+                CalamityUtils.BroadcastLocalizedText($"{Terminal}.TerminalLog5", Color.Red);
+                DialogCounter++;
+            }
+
+            if (Temperature >= 37 && DialogCounter == 9)
+            {
+                CalamityUtils.BroadcastLocalizedText($"{Terminal}.TerminalLog6", Color.Red);
+                DialogCounter++;
+            }
+
+            if (Temperature >= 38 && DialogCounter == 10)
+            {
+                CalamityUtils.BroadcastLocalizedText($"{Terminal}.TerminalLog7", Color.Red);
+                DialogCounter++;
+            }
+
+            if (Temperature >= 39 && DialogCounter == 11)
+            {
+                CalamityUtils.BroadcastLocalizedText($"{Terminal}.TerminalLog8", Color.Red);
+                DialogCounter++;
+            }
         }
     }
 }

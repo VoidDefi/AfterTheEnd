@@ -14,6 +14,8 @@ using Terraria.ID;
 using Terraria;
 using Terraria.ModLoader;
 using CalamityMod.NPCs.CalClone;
+using Terraria.Audio;
+using ReLogic.Utilities;
 
 namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 {
@@ -30,6 +32,12 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
         {
             get => (int)Projectile.ai[0];
             set => Projectile.ai[0] = value;
+        }
+
+        public bool CalamitasWasDespawned
+        {
+            get => Projectile.ai[1] > 0;
+            set => Projectile.ai[1] = value ? 1 : 0;
         }
 
         private NPC Calamitas
@@ -65,17 +73,45 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
             CooldownSlot = ImmunityCooldownID.Bosses;
         }
 
+        private SlotId SoundSlot;
+
         public override void AI()
         {
+            SoundStyle DroneSound = new SoundStyle("CalamityMod/Sounds/Custom/SCalSounds/BrimstoneMonsterDrone");
+
+            if (SoundEngine.TryGetActiveSound(SoundSlot, out ActiveSound Sound) && Sound.IsPlaying)
+            {
+                Sound.Position = Projectile.Center;
+            }
+
+            if (Projectile.timeLeft == 200000)
+            {
+                SoundStyle style = DroneSound with
+                {
+                    IsLooped = true,
+                    Volume = 0.1f
+                };
+                SoundSlot = SoundEngine.PlaySound(in style, Projectile.Center, (ActiveSound _) => new ProjectileAudioTracker(Projectile).IsActiveAndInGame());
+            }
+
+            float targetPitchShift = Math.Clamp(Projectile.scale / 3, 0, 1f);
+            if (SoundEngine.TryGetActiveSound(SoundSlot, out ActiveSound RumblePitch) && RumblePitch.IsPlaying)
+            {
+                RumblePitch.Pitch = MathHelper.Lerp(0f, 0.7f, targetPitchShift);
+                RumblePitch.Volume = MathHelper.Lerp(0f, 0.8f, targetPitchShift) * 10f;
+            }
+
             Lighting.AddLight(Projectile.Center, 0.9f * Projectile.Opacity, 0f, 0f);
 
-            if (Calamitas != null)
+            if (Calamitas != null && !CalamitasWasDespawned)
             {
                 Projectile.Center = Calamitas.Center;
-                Projectile.Center += Vector2.UnitY.RotatedBy(Calamitas.rotation) * 200;
+                Projectile.Center += Vector2.UnitY.RotatedBy(Calamitas.rotation) * 250;
 
                 Projectile.scale += 0.013f;
             }
+
+            else CalamitasWasDespawned = true;
 
             for (var i = 0; i < 1; i++)
             {
@@ -127,6 +163,11 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
             {
                 Dust.NewDust(Projectile.position + Projectile.velocity, Projectile.width, Projectile.height, (int)CalamityDusts.Brimstone, 0f, 0f);
             }*/
+        }
+
+        public override void ModifyDamageHitbox(ref Rectangle hitbox)
+        {
+            base.ModifyDamageHitbox(ref hitbox);
         }
     }
 }

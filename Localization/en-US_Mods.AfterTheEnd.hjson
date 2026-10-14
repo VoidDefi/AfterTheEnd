@@ -1,1 +1,31 @@
-Projectiles.CalamitasCloneVortex.DisplayName: Calamitas Clone Vortex
+Projectiles: {
+	CalamitasCloneVortex.DisplayName: Calamitas Clone Vortex
+	CalamitasLighting.DisplayName: Calamitas Lighting
+	BrotherSpawner.DisplayName: Brother Spawner
+}
+
+CalCloneDialogue: {
+	FirstBulletHell: ��� ���� ������������ ��, �����������.
+	PreBrothersUprising: ��������� �����, ������ ���!
+	PostBrothersUprising: ����.
+	SpawnSoulSeekers: �����������, � ��� �� �� ��� �������?!
+	SecondBulletHell: ���� ��� ������ � ��� �������! � �� - �����!
+	PreCastVortex0: �� ��� ���?!
+	PreCastVortex1: ��� ���������...
+	PreCastVortex2: ���� �� ���� ������!
+	LossControlOverVortex0: �-�-�-�-�!!!
+	LossControlOverVortex1: Нет... нет, нет, нет! Остановись! ОСТАНОВИСЬ!
+	LossControlOverVortex2: А-А-А-А-А!!!
+}
+
+CalCloneLifeSupportSystem: {
+	TerminalLog0: ���������� ���������� ����������� �����������. ������ ��������� �������������� ���������� �������...
+	TerminalLog1: "[�������������� ����������] �������������..."
+	TerminalLog2: "[�������������� ����������] ������� ������� ����������..."
+	TerminalLog3: "[�������������� ����������] ������ 0x0000DA71. ���������� �� �������. ��������� ��. � ������� �������."
+	TerminalLog4: �������������� ���������� ���� ���������...
+	TerminalLog5: - ������� 1321 object_control ��������
+	TerminalLog6: - ������� 1021 life_telemetry ��������
+	TerminalLog7: - �������  565 ls_host ��������
+	TerminalLog8: - �������  552 bci_�g^ �??    P �d? ??������������������������
+}

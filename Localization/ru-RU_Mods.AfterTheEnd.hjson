@@ -1,0 +1,31 @@
+Projectiles: {
+	CalamitasCloneVortex.DisplayName: Серный Вихрь
+	CalamitasLighting.DisplayName: Calamitas Lighting
+	// BrotherSpawner.DisplayName: Brother Spawner
+}
+
+CalCloneDialogue: {
+	FirstBulletHell: Это твой персональный ад, наслаждайся.
+	PreBrothersUprising: Восстанте вновь, братья мои!
+	PostBrothersUprising: Умри.
+	SpawnSoulSeekers: Впечетляюще, а что ты на это скажешь?!
+	SecondBulletHell: Этот мир сгорит в моём пламени! А Ты - перым!
+	PreCastVortex0: Ты Ещё жив?!
+	PreCastVortex1: Это ненадолго...
+	PreCastVortex2: Узри же свою смерть!
+	LossControlOverVortex0: ПОДЧЕНИСЬ ЖЕ, СЕРНОЕ ПЛАМЯ!
+	LossControlOverVortex1: Нет... нет, нет, нет! Остановись! ОСТАНОВИСЬ!
+	LossControlOverVortex2: А-А-А-А-А!!!
+}
+
+CalCloneLifeSupportSystem: {
+	TerminalLog0: > Обноружено привышение критической температуры. Запуск протакола принудительной гибернации объекта...
+	TerminalLog1: "[Принудительная гибернация] Инициализация..."
+	TerminalLog2: "[Принудительная гибернация] Попытка инекции анестетика..."
+	TerminalLog3: "[Принудительная гибернация] Ошибка 0x0000DA71. Устройство не найдено. Подробнее см. в журнале системы."
+	TerminalLog4: > Принудительное завершение всех процессов...
+	TerminalLog5: " - Процесс 1321 object_control завершон"
+	TerminalLog6: " - Процесс 1021 life_telemetry завершон"
+	TerminalLog7: " - Процесс 565 ls_host завершон"
+	TerminalLog8: " - Процесс 552 bci_Жg^ Ц??    P Иd? ??яяяяяяяяяяяяяяяяяяяяяяяя"
+}
