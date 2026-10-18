@@ -18,6 +18,7 @@ using MonoMod.Cil;
 using Mono.Cecil.Cil;
 using CalamityMod.NPCs;
 using CalClone = CalamityMod.NPCs.CalClone.CalamitasClone;
+using Terraria.Audio;
 
 namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
 {
@@ -69,7 +70,7 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                             int bufferIndex = cursor.Index;
 
                             cursor.GotoNext(i => i.Match(OpCodes.Br_S));
-                            object label = cursor.Instrs[cursor.Index].Operand;
+                            ILLabel label = (ILLabel)cursor.Instrs[cursor.Index].Operand;
 
                             cursor.Index = bufferIndex;
                             cursor.Index++;
@@ -93,7 +94,125 @@ namespace AfterTheEnd.Reworks.Bosses.CalamitasClone
                                 NPC.dontTakeDamage = true;
                             });
 
-                            cursor.EmitBr((ILLabel)label);
+                            cursor.EmitBr(label);
+
+                            //Emit Second Bullet-hell Dialogue
+                            cursor.GotoLabel(label);
+                            cursor.Index--;
+
+                            cursor.Emit(OpCodes.Ldarg_0); //load this argument
+                            cursor.EmitDelegate((CalClone self) =>
+                            {
+                                //На самом деле это реплика для первого булитхела, так-как почему-то иначе не работало, а мне лень дебажить
+                                Color messageColor = Color.Orange;
+                                CalamityUtils.BroadcastLocalizedText("Mods.AfterTheEnd.CalCloneDialogue.SecondBulletHell", messageColor);
+                            });
+
+                            break;
+                        }
+                    }
+
+                    else break;
+                }
+
+                cursor.Index = 0;
+
+                while (true)
+                {
+                    cursor.GotoNext(i => i.MatchLdfld(NewAIInfo.Value));
+
+                    if (cursor.Index < cursor.Instrs.Count - 4)
+                    {
+                        bool existLdcI40 = cursor.Instrs[cursor.Index + 1].Match(OpCodes.Ldc_I4_0);
+                        bool existLdelemR4 = cursor.Instrs[cursor.Index + 2].Match(OpCodes.Ldelem_R4);
+                        bool existLdcR4 = cursor.Instrs[cursor.Index + 3].MatchLdcR4(0.1f);
+                        bool existBgtUn = cursor.Instrs[cursor.Index + 4].Match(OpCodes.Bgt_Un_S);
+
+                        //cursor.Index = 0;
+                        if (existLdcI40 && existLdelemR4 && existLdcR4 && existBgtUn)
+                        {
+                            cursor.Index += 4;
+                            cursor.Index++;
+
+                            cursor.Emit(OpCodes.Ldarg_0); //load this argument
+                            cursor.EmitDelegate((CalClone self) =>
+                            {
+                                //На самом деле это реплика для второго булитхела, так-как почему-то иначе не работало, а мне лень дебажить
+                                Color messageColor = Color.Orange;
+                                CalamityUtils.BroadcastLocalizedText("Mods.AfterTheEnd.CalCloneDialogue.FirstBulletHell", messageColor);
+                            });
+
+                            break;
+                        }
+                    }
+
+                    else break;
+                }
+
+                cursor.Index = 0;
+
+                while (true)
+                {
+                    cursor.GotoNext(i => i.MatchLdfld(NewAIInfo.Value));
+
+                    if (cursor.Index < cursor.Instrs.Count - 8)
+                    {
+                        int matchesCount = 0;
+
+                        Instruction instruction = cursor.Instrs[cursor.Index + 5];
+
+                        matchesCount += cursor.Instrs[cursor.Index + 1].Match(OpCodes.Ldc_I4_1) ? 1 : 0;
+                        matchesCount += cursor.Instrs[cursor.Index + 2].Match(OpCodes.Ldelem_R4) ? 1 : 0;
+                        matchesCount += cursor.Instrs[cursor.Index + 3].MatchLdcR4(0.0f) ? 1 : 0;
+                        matchesCount += cursor.Instrs[cursor.Index + 4].MatchCeq() ? 1 : 0;
+                        matchesCount += cursor.Instrs[cursor.Index + 6].MatchAnd() ? 1 : 0;
+                        matchesCount += cursor.Instrs[cursor.Index + 7].MatchLdloc3() ? 1 : 0;
+                        matchesCount += cursor.Instrs[cursor.Index + 8].MatchAnd() ? 1 : 0;
+
+                        if (instruction.OpCode == OpCodes.Ldloc_S)
+                        {
+                            VariableReference varRef = instruction.Operand as VariableReference;
+
+                            if (varRef.Index == 6)
+                            {
+                                matchesCount++;
+                            }
+                        }
+
+                        //cursor.Index = 0;
+                        if (matchesCount >= 8)
+                        {
+                            cursor.Index += 9;
+                            ILLabel label = (ILLabel)cursor.Instrs[cursor.Index].Operand;
+
+                            cursor.Index++;
+
+                            cursor.Emit(OpCodes.Ldarg_0); //load this argument
+                            cursor.EmitDelegate((CalClone self) =>
+                            {
+                                NPC NPC = self.NPC;
+                                bool death = CalamityWorld.death || BossRushEvent.BossRushActive;
+
+                                SoundEngine.PlaySound(in SoundID.Item72, NPC.Center);
+                                if (Main.netMode != 1)
+                                {
+                                    int seekerAmt = (death ? 10 : 5);
+                                    int seekerSpread = 360 / seekerAmt;
+                                    int seekerDistance = (death ? 180 : 150);
+                                    for (int j = 0; j < seekerAmt; j++)
+                                    {
+                                        int spawn = NPC.NewNPC(NPC.GetSource_FromAI(), (int)(NPC.Center.X + Math.Sin(j * seekerSpread) * seekerDistance), (int)(NPC.Center.Y + Math.Cos(j * seekerSpread) * seekerDistance), ModContent.NPCType<SoulSeeker>(), NPC.whoAmI, 0f, 0f, 0f, -1f);
+                                        Main.npc[spawn].ai[0] = j * seekerSpread;
+                                    }
+                                }
+                                Color messageColor2 = Color.Orange;
+                                CalamityUtils.BroadcastLocalizedText("Mods.AfterTheEnd.CalCloneDialogue.SpawnSoulSeekers", messageColor2);
+
+                                CalamityGlobalNPC calamityGlobalNPC = NPC.Calamity();
+                                calamityGlobalNPC.newAI[1] = 1f;
+                            });
+
+                            cursor.EmitBr(label);
 
                             break;
                         }

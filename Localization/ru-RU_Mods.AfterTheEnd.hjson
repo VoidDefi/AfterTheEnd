@@ -1,15 +1,15 @@
 Projectiles: {
 	CalamitasCloneVortex.DisplayName: Серный Вихрь
 	CalamitasLighting.DisplayName: Calamitas Lighting
-	// BrotherSpawner.DisplayName: Brother Spawner
+	BrotherSpawner.DisplayName: Brother Spawner
 }
 
 CalCloneDialogue: {
-	FirstBulletHell: Это твой персональный ад, наслаждайся.
+	FirstBulletHell: Этот мир сгорит в моём пламени! Не мешай мне!
 	PreBrothersUprising: Восстанте вновь, братья мои!
 	PostBrothersUprising: Умри.
 	SpawnSoulSeekers: Впечетляюще, а что ты на это скажешь?!
-	SecondBulletHell: Этот мир сгорит в моём пламени! А Ты - перым!
+	SecondBulletHell: Это твой персональный ад, наслаждайся.
 	PreCastVortex0: Ты Ещё жив?!
 	PreCastVortex1: Это ненадолго...
 	PreCastVortex2: Узри же свою смерть!

@@ -18,6 +18,7 @@
 	  <None Remove="Reworks\Bosses\CalamitasClone\DarkVortex.png" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\Light.png" />
 	  <None Remove="Reworks\Bosses\CalamitasClone\MeltedMetalLayer.png" />
+	  <None Remove="Reworks\Bosses\CalamitasClone\SoulSeeker.png" />
 	</ItemGroup>
 	<ItemGroup>
 	  <Reference Remove="Libraries\CalamityMod.dll" />
